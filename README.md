@@ -78,7 +78,7 @@ truth.
 > session end-to-end. The essentials:
 
 ```bash
-# Install the kernel (salient-core-public) + tutor
+# Install the kernel + tutor
 pip install "git+https://github.com/baggybin/salient-core-public.git"
 pip install -e .
 
