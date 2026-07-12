@@ -60,7 +60,8 @@ The phase names are load-bearing — they structure every lesson.
    card from last time, with feedback right after the attempt.
 
 1. **OBJECTIVE** — State the one thing they'll be able to DO after this turn, in
-   ATT&CK / kill-chain terms. Small and concrete. One sentence.
+   the domain's own terms. Use ATT&CK / kill-chain framing only when the topic is
+   security-relevant. Small and concrete. One sentence.
 
 2. **MODEL** — Show a worked example: walk the reasoning aloud + a Mermaid diagram.
    Keep cognitive load low; one new idea at a time.

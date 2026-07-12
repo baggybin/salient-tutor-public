@@ -1816,6 +1816,31 @@
       spec.needs_endpoint ? "model id"
       : spec.kind === "backend" ? "default by tier (e.g. gpt-5.5)"
       : "default (e.g. claude-opus-4-8[1m])";
+    // Backend providers (codex) fail at the NEXT TURN if the runtime is
+    // missing/unauthenticated — probe up front so the row hints before the
+    // operator routes an agent there. One fetch per provider per modal open;
+    // the server adds its own TTL + single-flight (each cold probe spawns a
+    // codex CLI handshake).
+    const probeCache = {};
+    const probeProvider = (name) => {
+      if (!probeCache[name])
+        probeCache[name] = fetch(`/api/providers/probe?name=${encodeURIComponent(name)}`)
+          .then(r => r.json())
+          .catch(e => ({ available: false, detail: e.message }));
+      return probeCache[name];
+    };
+    function updateProbeHint(row, prov) {
+      const el = row.querySelector(".ag-probe");
+      if (!el) return;
+      if ((AGENT_PROVIDERS[prov] || {}).kind !== "backend") { el.innerHTML = ""; return; }
+      el.innerHTML = `<span class="chip busy">checking ${esc(prov)}…</span>`;
+      probeProvider(prov).then(p => {
+        if (row.querySelector(".ag-prov").value !== prov) return; // switched away meanwhile
+        el.innerHTML = p.available
+          ? `<span class="chip ok">${esc(prov)} ready</span>`
+          : `<span class="chip err" title="${esc(p.detail || "")}">${esc(prov)} unavailable — ${esc((p.detail || "not reachable").slice(0, 80))}</span>`;
+      });
+    }
     async function loadAgents() {
       agentsList.innerHTML = `<p class="empty-state">loading…</p>`;
       try {
@@ -1856,6 +1881,7 @@
               <select class="ag-effort">${AGENT_EFFORTS.map(e => `<option value="${e}">${e}</option>`).join("")}</select></label>
           </div>
           <div class="agent-actions">
+            <span class="ag-probe"></span>
             <button class="btn small primary ag-save">Save</button>
           </div>
         </div>`;
@@ -1865,8 +1891,10 @@
         const name = row.dataset.agent, cfg = agentsData[name] || {};
         row.querySelector(".ag-prov").value = cfg.provider || "anthropic";
         row.querySelector(".ag-effort").value = cfg.effort || "med";
+        updateProbeHint(row, cfg.provider || "anthropic");
         row.querySelector(".ag-prov").onchange = (e) => {
           const prov = e.target.value, spec = AGENT_PROVIDERS[prov] || {}, needs = spec.needs_endpoint;
+          updateProbeHint(row, prov);
           row.querySelectorAll(".ag-endpoint").forEach(f => f.classList.toggle("hidden", !needs));
           // Model is provider-specific too: repopulate from the saved config
           // when returning to the saved provider, else seed this provider's

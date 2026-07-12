@@ -16,6 +16,7 @@ import asyncio
 import json
 import logging
 import os
+import uuid
 from contextlib import suppress
 from functools import partial
 from pathlib import Path
@@ -34,6 +35,8 @@ from salient_core import (
     make_bus,
 )
 
+from salient_tutor.lesson import LessonController
+from salient_tutor.lesson_store import LessonStore
 from salient_tutor.pedagogy import import_bundle
 from salient_tutor.providers import PROVIDERS, resolve_thinking
 
@@ -150,7 +153,7 @@ _QUIZ_GRADE_PROMPT = (
 
 # Prerequisite-DAG skill map: tutor-inferred prereq edges persisted under the
 # curriculum: KG namespace (subject/object both prefixed), predicate prereq_of.
-_CURRICULUM_PREFIX = "curriculum:"
+_CURRICULUM_PREFIX = "curriculum:inferred:"
 _PREREQ_PREDICATE = "prereq_of"
 _SKILL_GRAPH_PROMPT = (
     "PREREQUISITE GRAPH. The learner has studied these topics:\n{topics}\n\n"
@@ -173,6 +176,16 @@ _AGENT_CONFIGS: dict[str, dict[str, Any]] = {
         "max_turns": 30,
         "family": "tutor",
         "label": "tutor",
+    },
+    "websearch": {
+        "system_prompt_file": "websearch.md",
+        "model": os.environ.get("TUTOR_WEBSEARCH_MODEL", "claude-sonnet-5[1m]"),
+        "builtin_tools": ["WebSearch", "WebFetch"],
+        "max_turns": 8,
+        # One-shot lookup leaf — tutors reach it via ask_agent (tutor.md's
+        # KB-discipline step 5); it never delegates back, so no bus server
+        # (same context-size rationale as the librarian below).
+        "bus_tools": False,
     },
     "librarian": {
         "system_prompt_file": "librarian.md",
@@ -201,6 +214,7 @@ _PROVIDER_ENV: dict[str, str] = {
     "tutor_alt": "TUTOR_VARIANT_PROVIDER",
     "judge": "TUTOR_JUDGE_PROVIDER",
     "librarian": "TUTOR_LIBRARIAN_PROVIDER",
+    "websearch": "TUTOR_WEBSEARCH_PROVIDER",
 }
 
 # Agents that don't exist in the base roster but can be created purely from the
@@ -220,7 +234,8 @@ def _build_agent_configs(
     ``TUTOR_JUDGE_MODEL``) OR the persisted ``agent_configs.json`` block
     (``runtime``) carries a ``model`` for them — so the whole roster can be
     driven from the config file alone, no env required. Env wins for the model
-    when both are set. With neither the roster is just tutor + librarian.
+    when both are set. With neither the roster is just tutor + librarian +
+    websearch.
 
     ``tutor_alt`` runs the SAME lesson-loop prompt on a different model; the web
     modal's variant picker then lets the operator switch which tutor answers
@@ -302,6 +317,8 @@ class TutorDaemon:
         # "'PosixPath' object has no attribute 'record_question'".
         self.inbox = QuestionInbox(self.context)
         self.actions = ActionLedger(self.work_root / "actions.db")
+        self.lesson_store = LessonStore(self.work_root / "lessons.db")
+        self.lessons = LessonController(self.lesson_store)
 
         self.event_hub = EventHub()
         self.agent_configs = _build_agent_configs(self._agent_runtime)
@@ -1253,6 +1270,7 @@ class TutorDaemon:
         """Seed the mnemonic KG, then start all agent runners."""
         self._seed_pedagogy()
         self._seed_curricula()
+        self._migrate_curriculum_prefix()
         for agent in self.agent_configs:
             runner = self._make_runner(agent)
             task = asyncio.create_task(runner.start())
@@ -1271,19 +1289,60 @@ class TutorDaemon:
             task.cancel()
         _log.info("tutor daemon stopped")
 
-    async def prompt(self, agent: str, message: str, *, timeout: float = 120.0) -> str:
+    async def prompt(
+        self, agent: str, message: str, *, timeout: float = 120.0, session_id: str | None = None
+    ) -> str:
         """Send a prompt to an agent and wait for the response."""
+        if session_id:
+            session = self.get_session(session_id)
+            message = (
+                f"SERVER SESSION STATE: phase={session['phase']}; skill_id={session['skill_id']}; "
+                "Structured assessment actions, not prose, advance the lesson.\n\n" + message
+            )
         runner = self._make_runner(agent)
         if runner.status not in ("running", "idle"):
             await runner.start()
+        store = getattr(self, "lesson_store", None)
+        # start/finish_agent_run are blocking sqlite writes; keep them off the
+        # event loop so telemetry never stalls the daemon.
+        run = (
+            await asyncio.to_thread(
+                store.start_agent_run,
+                session_id,
+                agent,
+                str(runner.cfg.get("model") or runner.cfg.get("provider") or "unknown"),
+                "prompt",
+            )
+            if store is not None
+            else None
+        )
 
         future: asyncio.Future = asyncio.get_running_loop().create_future()
         # cfg max_turns as the per-job budget: claude backends enforce it via
         # ClaudeAgentOptions, but backend-seam providers (codex) have no
         # native turn cap — the hint arms the runner's wire-level hard cap.
         runner.submit(message, future=future, max_turns_hint=runner.cfg.get("max_turns"))
-        result_job = await asyncio.wait_for(future, timeout=timeout)
-        return result_job.result or result_job.error or "(no response)"
+        try:
+            result_job = await asyncio.wait_for(future, timeout=timeout)
+        except TimeoutError:
+            if store is not None and run is not None:
+                await asyncio.to_thread(
+                    store.finish_agent_run, run["run_id"], "timeout", error="agent timeout"
+                )
+            raise
+        except Exception as error:
+            if store is not None and run is not None:
+                await asyncio.to_thread(
+                    store.finish_agent_run, run["run_id"], "failed", error=str(error)
+                )
+            raise
+        output = result_job.result or ""
+        status = "failed" if result_job.error else "completed"
+        if store is not None and run is not None:
+            await asyncio.to_thread(
+                store.finish_agent_run, run["run_id"], status, output=output, error=result_job.error
+            )
+        return output or result_job.error or "(no response)"
 
     async def second_opinion(self, question: str, *, timeout: float = 180.0) -> dict[str, Any]:
         """Ask the tutor panel (tutor + tutor_alt) the same question via the
@@ -1477,6 +1536,131 @@ class TutorDaemon:
             "review_due": review_due,
         }
 
+    def create_session(
+        self, skill_id: str, *, session_kind: str = "lesson", **bindings: str | None
+    ) -> dict[str, Any]:
+        return self.lessons.create_session(skill_id, session_kind=session_kind, **bindings)
+
+    def get_session(self, session_id: str) -> dict[str, Any]:
+        return self.lessons.get_session(session_id)
+
+    def current_session(self) -> dict[str, Any] | None:
+        return self.lessons.current_session()
+
+    def session_events(self, session_id: str) -> list[dict[str, Any]]:
+        return self.lesson_store.events(session_id)
+
+    def pause_session(self, session_id: str, expected_version: int | None = None) -> dict[str, Any]:
+        return self.lessons.pause(session_id, expected_version)
+
+    def resume_session(
+        self, session_id: str, expected_version: int | None = None
+    ) -> dict[str, Any]:
+        return self.lessons.resume(session_id, expected_version)
+
+    def abandon_session(
+        self, session_id: str, expected_version: int | None = None
+    ) -> dict[str, Any]:
+        return self.lessons.abandon(session_id, expected_version)
+
+    def advance_phase(self, session_id: str, expected_version: int | None = None) -> dict[str, Any]:
+        return self.lessons.advance(session_id, expected_version)
+
+    def issue_assessment_item(
+        self,
+        session_id: str,
+        item: dict[str, Any] | None = None,
+        expected_version: int | None = None,
+    ) -> dict[str, Any]:
+        return self.lessons.issue_item(session_id, item=item, expected_version=expected_version)
+
+    def record_attempt(
+        self,
+        session_id: str,
+        item_id: str,
+        item_version: int,
+        response: str,
+        idempotency_key: str,
+        hints_used: int = 0,
+        judge_result: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self.lessons.record_attempt(
+            session_id,
+            item_id,
+            item_version,
+            response,
+            idempotency_key,
+            hints_used=hints_used,
+            judge_result=judge_result,
+        )
+
+    def apply_attempt_review(
+        self, session_id: str, attempt_id: str, idempotency_key: str
+    ) -> dict[str, Any]:
+        attempt = self.lesson_store.get_attempt(attempt_id)
+        if attempt is None or attempt["session_id"] != session_id:
+            raise ValueError("attempt does not belong to session")
+        existing = self.lesson_store.get_review_application(idempotency_key)
+        if existing:
+            return existing
+        session = self.get_session(session_id)
+        grade = self.lessons.grade_for_attempt(attempt)
+        if grade is None:
+            return self.lesson_store.save_review_application(
+                {
+                    "idempotency_key": idempotency_key,
+                    "attempt_id": attempt_id,
+                    "srs_topic": session["srs_topic"],
+                    "requested_grade": "unscored",
+                    "application_status": "not_applied",
+                    "scheduler_result": {},
+                    "error": "assessment was not confidently scored",
+                }
+            )
+        result = self.record_review(session["srs_topic"], grade)
+        return self.lesson_store.save_review_application(
+            {
+                "idempotency_key": idempotency_key,
+                "attempt_id": attempt_id,
+                "srs_topic": session["srs_topic"],
+                "requested_grade": grade,
+                "application_status": "applied",
+                "scheduler_result": result,
+            }
+        )
+
+    def create_card(self, session_id: str, card: dict[str, Any]) -> dict[str, Any]:
+        session = self.get_session(session_id)
+        item_id = str(card.get("source_item_id") or session.get("active_item_id") or "")
+        if not item_id or not card.get("question") or not card.get("answer"):
+            raise ValueError("card requires source_item_id, question, and answer")
+        return self.lesson_store.save_card(
+            {
+                "card_id": str(card.get("card_id") or uuid.uuid4().hex),
+                "version": int(card.get("version", 1)),
+                "skill_id": session["skill_id"],
+                "source_item_id": item_id,
+                "question": str(card["question"]),
+                "answer": str(card["answer"]),
+                "card_type": str(card.get("card_type") or "basic"),
+                "provenance": card.get("provenance", []),
+                "srs_topic": session["srs_topic"],
+                "status": str(card.get("status") or "active"),
+            }
+        )
+
+    def list_cards(self, skill_id: str | None = None) -> list[dict[str, Any]]:
+        return self.lesson_store.list_cards(skill_id=skill_id)
+
+    def update_card_status(self, card_id: str, version: int, status: str) -> dict[str, Any]:
+        return self.lesson_store.update_card_status(card_id, version, status)
+
+    def analytics(self) -> dict[str, Any]:
+        return self.lesson_store.analytics()
+
+    def migration_report(self) -> dict[str, Any]:
+        return self.lesson_store.migration_report()
+
     def review_log(
         self, *, topic: str | None = None, limit: int | None = 500
     ) -> list[dict[str, Any]]:
@@ -1570,6 +1754,64 @@ class TutorDaemon:
             if a and b:
                 out.append((a, b))
         return out
+
+    def _migrate_curriculum_prefix(self) -> int:
+        """One-time, idempotent migration of tutor-inferred prereq edges from the
+        legacy bare ``curriculum:<topic>`` namespace to ``curriculum:inferred:``.
+
+        Earlier builds persisted ``prereq_of`` edges under a bare ``curriculum:``
+        prefix, which collided with the seeded ``curriculum:track:`` namespace;
+        the inferred-edge prefix was later renamed to ``curriculum:inferred:``.
+        Without this migration an existing install's edges become invisible to
+        :meth:`_persisted_edges` (the tutor needlessly regenerates them),
+        unpurgeable by ``skill_graph`` rebuild, and leak into KB search (the
+        namespace-skip filter no longer matches them).
+
+        Re-asserts each legacy edge under the new prefix (``assert_fact`` dedupe
+        makes re-runs a no-op) then deletes the old rows by id. New-prefix rows
+        are written before their old twin is dropped, so a crash mid-migration
+        just leaves work for the next startup. Returns the count migrated.
+        """
+
+        def _remap(term: str) -> str:
+            if term.startswith(("curriculum:track:", _CURRICULUM_PREFIX)):
+                return term
+            if term.startswith("curriculum:"):
+                return _CURRICULUM_PREFIX + term.removeprefix("curriculum:")
+            return term
+
+        stale_ids: list[int] = []
+        for f in self.kg.export_by_subject_prefix("curriculum:"):
+            subject = str(f.get("subject", ""))
+            # Leave the seeded track namespace and already-migrated rows alone.
+            if subject.startswith(("curriculum:track:", _CURRICULUM_PREFIX)):
+                continue
+            if f.get("predicate") != _PREREQ_PREDICATE:
+                continue
+            fid = f.get("id")
+            if not isinstance(fid, int):
+                continue
+            try:
+                self.kg.assert_fact(
+                    _remap(subject),
+                    _PREREQ_PREDICATE,
+                    _remap(str(f.get("object", ""))),
+                    confidence=float(f.get("confidence") or 1.0),
+                    agent=f.get("agent") or "curriculum",
+                    engagement_id=f.get("engagement_id"),
+                    expires_at=f.get("expires_at"),
+                )
+            except Exception:  # noqa: BLE001 — skip a bad row, keep the old one for next run
+                continue
+            stale_ids.append(fid)
+        if stale_ids:
+            self.kg.delete_many(stale_ids)
+            _log.info(
+                "migrated %d legacy curriculum: prereq edges to %s",
+                len(stale_ids),
+                _CURRICULUM_PREFIX,
+            )
+        return len(stale_ids)
 
     def _assemble_skill_graph(
         self, profile: dict[str, Any], edges: list[tuple[str, str]]
@@ -1701,6 +1943,8 @@ class TutorDaemon:
         at startup. Returns one dict per track: ``{id, title, description,
         modules, topics}``.
         """
+        from salient_core.tutor.schedule import STRONG_THRESHOLD
+
         facts = self.kg.export_by_subject_prefix("curriculum:track:")
         tracks: dict[str, dict[str, Any]] = {}
         mod_subjects: dict[str, set[str]] = {}  # track_id → set of module subjects
@@ -1737,7 +1981,70 @@ class TutorDaemon:
         for track_id, t in tracks.items():
             t["modules"] = len(mod_subjects.get(track_id, set()))
             t["topics"] = len(topic_subjects.get(track_id, set()))
-        return list(tracks.values())
+        records = list(tracks.values())
+        authored: dict[str, dict[str, Any]] = {}
+        for path in sorted(_CURRICULA_DIR.glob("*.json")):
+            if path.name == "index.json":
+                continue
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            track_id = str(data.get("track") or "")
+            if track_id:
+                authored[track_id] = data
+        for track in records:
+            data = authored.get(track["id"], {})
+            modules: list[dict[str, Any]] = []
+            for module in data.get("modules") or []:
+                if not isinstance(module, dict):
+                    continue
+                module_id = str(module.get("id") or "")
+                if not module_id:
+                    continue
+                topics: list[dict[str, Any]] = []
+                for topic in module.get("topics") or []:
+                    if not isinstance(topic, dict) or not topic.get("id"):
+                        continue
+                    topic_id = str(topic["id"])
+                    skill_id = f"curriculum:track:{track['id']}:module:{module_id}:topic:{topic_id}"
+                    state = self.kg.learner_review_state(LEARNER_SUBJECT, skill_id)
+                    topics.append(
+                        {
+                            "id": topic_id,
+                            "title": str(topic.get("title") or topic_id),
+                            "skill_id": skill_id,
+                            "difficulty": module.get("difficulty"),
+                            "mastery_stage": "durable_mastery"
+                            if state and state.get("mastery", 0.0) >= STRONG_THRESHOLD
+                            else "unstarted",
+                            "available": True,
+                        }
+                    )
+                modules.append(
+                    {
+                        "id": module_id,
+                        "title": str(module.get("title") or module_id),
+                        "objective": str(module.get("objective") or ""),
+                        "difficulty": module.get("difficulty"),
+                        "prerequisites": list(module.get("prerequisites") or []),
+                        "topics": topics,
+                    }
+                )
+            mastered_modules = {
+                module["id"]
+                for module in modules
+                if module["topics"]
+                and all(topic["mastery_stage"] == "durable_mastery" for topic in module["topics"])
+            }
+            for module in modules:
+                module["available"] = all(
+                    prerequisite in mastered_modules for prerequisite in module["prerequisites"]
+                )
+                for topic in module["topics"]:
+                    topic["available"] = module["available"]
+            track["modules_detail"] = modules
+        return records
 
     def study_show(self, project_id: str) -> dict[str, Any] | None:
         """Show one project's full envelope."""

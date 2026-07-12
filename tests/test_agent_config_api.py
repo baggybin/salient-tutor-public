@@ -567,21 +567,38 @@ class TestAgentConfigRoutes:
         assert body["providers"]["codex"]["kind"] == "backend"
         assert body["providers"]["local"]["kind"] == "endpoint"
 
+    @staticmethod
+    def _isolate_probe_state(monkeypatch):
+        # The probe endpoint keeps a module-level TTL cache + in-flight map;
+        # give each test a fresh pair so results can't leak across tests.
+        monkeypatch.setattr(web, "_probe_cache", {})
+        monkeypatch.setattr(web, "_probe_inflight", {})
+
+    @staticmethod
+    def _stub_probe_provider(probe_coro):
+        from salient_core.codex import CodexProvider
+
+        class _StubProbe(CodexProvider):
+            def __init__(self):
+                self.probe_calls = 0
+
+            async def probe(self):
+                self.probe_calls += 1
+                return await probe_coro()
+
+        return _StubProbe()
+
     def test_codex_probe_endpoint(self, tmp_path, monkeypatch):
         # Stubbed provider registry — the endpoint must relay probe() and stay
         # FAIL-SAFE (never a 500), without touching a real codex runtime.
         from salient_core import ProviderRegistry, reset_provider_registry, set_provider_registry
-        from salient_core.codex import CodexProvider
         from salient_core.providers import ProviderProbe
 
-        class _StubProbe(CodexProvider):
-            def __init__(self):
-                pass
+        async def _unavailable():
+            return ProviderProbe(False, "install the optional codex extra")
 
-            async def probe(self):
-                return ProviderProbe(False, "install the optional codex extra")
-
-        set_provider_registry(ProviderRegistry([_StubProbe()]))
+        self._isolate_probe_state(monkeypatch)
+        set_provider_registry(ProviderRegistry([self._stub_probe_provider(_unavailable)]))
         try:
             shell = _DaemonShell(tmp_path, monkeypatch)
             monkeypatch.setattr(web, "daemon", shell)
@@ -595,6 +612,82 @@ class TestAgentConfigRoutes:
             # Endpoint providers aren't probeable backends.
             r2 = client.get("/api/providers/probe", params={"name": "local"})
             assert "error" in r2.json()
+        finally:
+            reset_provider_registry()
+
+    def test_codex_probe_timeout_is_fail_safe(self, tmp_path, monkeypatch):
+        # A wedged codex binary must not pin the request: the endpoint bounds
+        # the probe and reports unavailable instead of hanging.
+        import asyncio
+
+        from salient_core import ProviderRegistry, reset_provider_registry, set_provider_registry
+
+        async def _wedged():
+            await asyncio.sleep(30)
+
+        self._isolate_probe_state(monkeypatch)
+        monkeypatch.setattr(web, "_PROBE_TIMEOUT", 0.05)
+        set_provider_registry(ProviderRegistry([self._stub_probe_provider(_wedged)]))
+        try:
+            shell = _DaemonShell(tmp_path, monkeypatch)
+            monkeypatch.setattr(web, "daemon", shell)
+            r = TestClient(web.app).get("/api/providers/probe", params={"name": "codex"})
+            body = r.json()
+            assert body["available"] is False
+            assert "timed out" in body["detail"]
+        finally:
+            reset_provider_registry()
+
+    def test_codex_probe_result_is_cached_with_ttl(self, tmp_path, monkeypatch):
+        # Every cold probe spawns a codex CLI handshake — repeat requests
+        # inside the TTL must be served from cache, and expiry re-probes.
+        from salient_core import ProviderRegistry, reset_provider_registry, set_provider_registry
+        from salient_core.providers import ProviderProbe
+
+        async def _available():
+            return ProviderProbe(True, "codex 1.2.3, authenticated")
+
+        self._isolate_probe_state(monkeypatch)
+        provider = self._stub_probe_provider(_available)
+        set_provider_registry(ProviderRegistry([provider]))
+        try:
+            shell = _DaemonShell(tmp_path, monkeypatch)
+            monkeypatch.setattr(web, "daemon", shell)
+            client = TestClient(web.app)
+            for _ in range(3):
+                assert client.get("/api/providers/probe").json()["available"] is True
+            assert provider.probe_calls == 1
+            monkeypatch.setattr(web, "_PROBE_TTL", 0.0)  # force expiry
+            assert client.get("/api/providers/probe").json()["available"] is True
+            assert provider.probe_calls == 2
+        finally:
+            reset_provider_registry()
+
+    def test_codex_probe_concurrent_callers_share_one_probe(self, tmp_path, monkeypatch):
+        # Single-flight: N concurrent requests (an Agents-tab render across
+        # browser tabs) must spawn ONE probe, not stack N subprocesses.
+        import asyncio
+
+        from salient_core import ProviderRegistry, reset_provider_registry, set_provider_registry
+        from salient_core.providers import ProviderProbe
+
+        async def _slow_available():
+            await asyncio.sleep(0.05)
+            return ProviderProbe(True, "codex 1.2.3, authenticated")
+
+        self._isolate_probe_state(monkeypatch)
+        provider = self._stub_probe_provider(_slow_available)
+        set_provider_registry(ProviderRegistry([provider]))
+        try:
+            shell = _DaemonShell(tmp_path, monkeypatch)
+            monkeypatch.setattr(web, "daemon", shell)
+
+            async def scenario():
+                return await asyncio.gather(*(web.provider_probe("codex") for _ in range(5)))
+
+            results = asyncio.run(scenario())
+            assert all(r["available"] is True for r in results)
+            assert provider.probe_calls == 1
         finally:
             reset_provider_registry()
 

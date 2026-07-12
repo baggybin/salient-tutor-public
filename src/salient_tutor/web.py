@@ -26,15 +26,16 @@ import json
 import logging
 import os
 import re
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 if TYPE_CHECKING:
     import httpx
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -42,6 +43,7 @@ from salient_core import semantic_recall
 
 from salient_tutor import diagrams, illustrations, image_cloud, minimax_tts
 from salient_tutor.daemon import TutorDaemon
+from salient_tutor.lesson_store import LessonStoreError, SessionConflict
 
 _log = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -181,6 +183,60 @@ class ReviewRequest(BaseModel):
     grade: str
 
 
+class SessionRequest(BaseModel):
+    source: str = "custom"
+    session_kind: str = "lesson"
+    skill_id: str = ""
+    track_id: str | None = None
+    module_id: str | None = None
+    topic_id: str | None = None
+    study_project_id: str | None = None
+    section_id: str | None = None
+    srs_topic: str | None = None
+
+
+class SessionWriteRequest(BaseModel):
+    expected_version: int | None = None
+
+
+class AssessmentItemRequest(BaseModel):
+    item: dict | None = None
+    expected_version: int | None = None
+
+
+class AttemptRequest(BaseModel):
+    item_id: str
+    item_version: int
+    response: str
+    idempotency_key: str
+    hints_used: int = 0
+    # Structured judge verdict for free_text items (status/confidence/criteria).
+    # Deterministic item types ignore it; free_text stays "unscored" until a
+    # confident judge result arrives, so the field must be forwardable.
+    judge_result: dict | None = None
+
+
+class ReviewApplyRequest(BaseModel):
+    attempt_id: str
+    idempotency_key: str
+
+
+class CardRequest(BaseModel):
+    card_id: str | None = None
+    version: int = 1
+    source_item_id: str | None = None
+    question: str
+    answer: str
+    card_type: str = "basic"
+    provenance: list[dict] = []
+    status: str = "active"
+
+
+class CardStatusRequest(BaseModel):
+    version: int
+    status: str
+
+
 class DiagramRequest(BaseModel):
     engine: str
     source: str
@@ -202,6 +258,20 @@ class ImageResponse(BaseModel):
     cached: bool = False
     model: str | None = None
     error: str | None = None
+
+
+def _require_daemon() -> TutorDaemon:
+    if daemon is None:
+        raise HTTPException(status_code=503, detail="daemon not started")
+    return daemon
+
+
+def _lesson_error(error: Exception) -> NoReturn:
+    if isinstance(error, SessionConflict):
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if isinstance(error, LessonStoreError):
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    raise error
 
 
 @app.get("/")
@@ -239,6 +309,7 @@ async def ws_tutor(ws: WebSocket) -> None:
         "job": None,
         "gated_job": None,
         "attempt_pending": False,
+        "session_id": None,
     }
 
     async def ensure(agent: str):
@@ -328,6 +399,7 @@ async def ws_tutor(ws: WebSocket) -> None:
                 "error": result_job.error,
                 "hinted": hinted,
                 "awaiting": awaiting,
+                "session_id": state["session_id"],
             }
         except Exception as e:  # noqa: BLE001 — surface any failure to the client
             payload = {"kind": "error", "agent": agent, "job_id": job_id, "text": str(e)}
@@ -348,6 +420,22 @@ async def ws_tutor(ws: WebSocket) -> None:
             except (ValueError, TypeError):
                 continue
             cmd = msg.get("cmd")
+            if cmd == "attach":
+                requested = (msg.get("session_id") or "").strip()
+                try:
+                    snapshot = await asyncio.to_thread(daemon.get_session, requested)
+                    events = await asyncio.to_thread(daemon.session_events, requested)
+                except Exception as error:
+                    # A bad/stale session id must not tear down the whole socket
+                    # (raising HTTPException here would): reply with an error
+                    # frame and keep the connection alive, like the submit path.
+                    await ws.send_json(
+                        {"kind": "conflict", "session_id": requested, "text": str(error)}
+                    )
+                    continue
+                state["session_id"] = requested
+                await ws.send_json({"kind": "session", "session": snapshot, "events": events})
+                continue
             if cmd == "select":
                 agent = msg.get("agent")
                 if agent in tutor_names:
@@ -392,6 +480,20 @@ async def ws_tutor(ws: WebSocket) -> None:
                 if p
             ]
             submit_text = "\n\n".join([*parts, text]) if parts else text
+            attached_session = msg.get("session_id") or state["session_id"]
+            if attached_session:
+                try:
+                    snapshot = await asyncio.to_thread(daemon.get_session, attached_session)
+                except Exception as error:
+                    await ws.send_json(
+                        {"kind": "conflict", "session_id": attached_session, "text": str(error)}
+                    )
+                    continue
+                state["session_id"] = attached_session
+                submit_text = (
+                    f"SERVER SESSION STATE: phase={snapshot['phase']}; skill_id={snapshot['skill_id']}; "
+                    "Only structured assessment actions advance the lesson.\n\n" + submit_text
+                )
             loop = asyncio.get_running_loop()
             fut: asyncio.Future = loop.create_future()
             # cfg max_turns as the per-job budget — arms the runner's hard cap
@@ -451,6 +553,162 @@ async def second_opinion(req: SecondOpinionRequest) -> dict:
         return _strip_image_fences(await daemon.second_opinion(q))
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+@app.post("/api/sessions")
+def create_session(req: SessionRequest) -> dict:
+    service = _require_daemon()
+    skill_id = req.skill_id.strip()
+    if not skill_id:
+        if req.study_project_id and req.section_id:
+            skill_id = f"study:{req.study_project_id}:sec:{req.section_id}"
+        elif req.track_id and req.module_id and req.topic_id:
+            skill_id = (
+                f"curriculum:track:{req.track_id}:module:{req.module_id}:topic:{req.topic_id}"
+            )
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="skill_id or a complete curriculum/study binding is required",
+            )
+    try:
+        return service.create_session(
+            skill_id,
+            session_kind=req.session_kind,
+            srs_topic=req.srs_topic,
+            track_id=req.track_id,
+            module_id=req.module_id,
+            topic_id=req.topic_id,
+            study_project_id=req.study_project_id,
+            section_id=req.section_id,
+        )
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.get("/api/sessions/current")
+def current_session() -> dict:
+    session = _require_daemon().current_session()
+    return {"session": session}
+
+
+@app.get("/api/sessions/{session_id}")
+def get_session(session_id: str) -> dict:
+    try:
+        return {"session": _require_daemon().get_session(session_id)}
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.post("/api/sessions/{session_id}/pause")
+def pause_session(session_id: str, req: SessionWriteRequest) -> dict:
+    try:
+        return {"session": _require_daemon().pause_session(session_id, req.expected_version)}
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.post("/api/sessions/{session_id}/resume")
+def resume_session(session_id: str, req: SessionWriteRequest) -> dict:
+    try:
+        return {"session": _require_daemon().resume_session(session_id, req.expected_version)}
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.post("/api/sessions/{session_id}/abandon")
+def abandon_session(session_id: str, req: SessionWriteRequest) -> dict:
+    try:
+        return {"session": _require_daemon().abandon_session(session_id, req.expected_version)}
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.post("/api/sessions/{session_id}/advance")
+def advance_session(session_id: str, req: SessionWriteRequest) -> dict:
+    try:
+        return {"session": _require_daemon().advance_phase(session_id, req.expected_version)}
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.get("/api/sessions/{session_id}/events")
+def session_events(session_id: str) -> dict:
+    try:
+        service = _require_daemon()
+        service.get_session(session_id)
+        return {"events": service.session_events(session_id)}
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.post("/api/sessions/{session_id}/items")
+def issue_item(session_id: str, req: AssessmentItemRequest) -> dict:
+    try:
+        if req.item and "reference_answer" in req.item:
+            raise HTTPException(status_code=422, detail="reference answers are server-owned")
+        return _require_daemon().issue_assessment_item(session_id, req.item, req.expected_version)
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.post("/api/sessions/{session_id}/attempts")
+def record_attempt(session_id: str, req: AttemptRequest) -> dict:
+    try:
+        return _require_daemon().record_attempt(
+            session_id,
+            req.item_id,
+            req.item_version,
+            req.response,
+            req.idempotency_key,
+            req.hints_used,
+            judge_result=req.judge_result,
+        )
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.post("/api/sessions/{session_id}/reviews")
+def apply_attempt_review(session_id: str, req: ReviewApplyRequest) -> dict:
+    try:
+        return {
+            "review": _require_daemon().apply_attempt_review(
+                session_id, req.attempt_id, req.idempotency_key
+            )
+        }
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.post("/api/sessions/{session_id}/cards")
+def create_card(session_id: str, req: CardRequest) -> dict:
+    try:
+        return {"card": _require_daemon().create_card(session_id, req.model_dump())}
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.get("/api/cards")
+def list_cards(skill_id: str | None = None) -> dict:
+    return {"cards": _require_daemon().list_cards(skill_id)}
+
+
+@app.post("/api/cards/{card_id}/status")
+def update_card_status(card_id: str, req: CardStatusRequest) -> dict:
+    try:
+        return {"card": _require_daemon().update_card_status(card_id, req.version, req.status)}
+    except Exception as error:
+        _lesson_error(error)
+
+
+@app.get("/api/analytics")
+def analytics() -> dict:
+    return _require_daemon().analytics()
+
+
+@app.get("/api/migrations/report")
+def migration_report() -> dict:
+    return _require_daemon().migration_report()
 
 
 def _strip_image_fences(obj):
@@ -835,7 +1093,7 @@ async def study_list() -> dict:
 
 
 @app.get("/api/curricula/list")
-async def curricula_list() -> dict:
+def curricula_list() -> dict:
     """All curriculum tracks seeded into the ``curriculum:track:`` KG namespace
     at daemon startup (from private ``data/curricula/*.json``)."""
     if not daemon:
@@ -1177,6 +1435,39 @@ async def agents_config() -> dict:
     }
 
 
+# Probe results are cached (TTL) and concurrent callers share one in-flight
+# task (single-flight): every COLD codex probe spawns a codex CLI app-server
+# subprocess for a JSON-RPC handshake, so an Agents-tab render — or several
+# browser tabs — must not stack subprocesses. The timeout keeps a wedged
+# (alive but unresponsive) binary from pinning the request and its probe
+# worker thread forever: the handshake bottoms out in an untimed Queue.get.
+_PROBE_TTL = 60.0
+_PROBE_TIMEOUT = 10.0
+_probe_cache: dict[str, tuple[float, dict]] = {}
+_probe_inflight: dict[str, asyncio.Task] = {}
+
+
+async def _run_probe(name: str) -> dict:
+    try:
+        from salient_core import ProviderName, get_provider_registry
+
+        probe = await asyncio.wait_for(
+            get_provider_registry().get(ProviderName(name)).probe(), timeout=_PROBE_TIMEOUT
+        )
+        result = {"provider": name, "available": probe.available, "detail": probe.detail}
+    except TimeoutError:
+        result = {
+            "provider": name,
+            "available": False,
+            "detail": f"probe timed out after {_PROBE_TIMEOUT:.0f}s",
+        }
+    except Exception as exc:  # noqa: BLE001 — surface, never 500 the tab
+        result = {"provider": name, "available": False, "detail": str(exc)}
+    _probe_cache[name] = (time.monotonic(), result)
+    _probe_inflight.pop(name, None)
+    return result
+
+
 @app.get("/api/providers/probe")
 async def provider_probe(name: str = "codex") -> dict:
     """Availability probe for a backend provider (is the SDK installed and
@@ -1189,13 +1480,16 @@ async def provider_probe(name: str = "codex") -> dict:
     spec = PROVIDERS.get(name)
     if spec is None or spec.kind != "backend":
         return {"error": f"provider {name!r} is not a probeable backend provider"}
-    try:
-        from salient_core import ProviderName, get_provider_registry
-
-        probe = await get_provider_registry().get(ProviderName(name)).probe()
-        return {"provider": name, "available": probe.available, "detail": probe.detail}
-    except Exception as exc:  # noqa: BLE001 — surface, never 500 the tab
-        return {"provider": name, "available": False, "detail": str(exc)}
+    cached = _probe_cache.get(name)
+    if cached and time.monotonic() - cached[0] < _PROBE_TTL:
+        return cached[1]
+    task = _probe_inflight.get(name)
+    if task is None:
+        task = asyncio.create_task(_run_probe(name))
+        _probe_inflight[name] = task
+    # Awaiting a shared task: a cancelled awaiter (client disconnect) detaches
+    # without cancelling the probe, so the other callers still get a result.
+    return await task
 
 
 @app.post("/api/agents/config")

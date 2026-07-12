@@ -83,6 +83,45 @@ def test_persisted_edges_roundtrip(tmp_path, monkeypatch):
     assert edges == [("a", "b"), ("b", "c")]
 
 
+# ── _migrate_curriculum_prefix (real KG) ──────────────────────────────────────
+
+
+def _bare_curriculum_subjects(kg):
+    return [
+        f["subject"]
+        for f in kg.export_by_subject_prefix("curriculum:")
+        if not f["subject"].startswith(("curriculum:track:", _CURRICULUM_PREFIX))
+    ]
+
+
+def test_migrate_curriculum_prefix_relabels_legacy_edges(tmp_path, monkeypatch):
+    d = _daemon(tmp_path, monkeypatch)
+    # Legacy bare-prefix prereq edges from an older build.
+    d.kg.assert_fact("curriculum:a", _PREREQ_PREDICATE, "curriculum:b", agent="curriculum")
+    d.kg.assert_fact("curriculum:b", _PREREQ_PREDICATE, "curriculum:c", agent="curriculum")
+    # A seeded track fact and an already-migrated edge must be left untouched.
+    d.kg.assert_fact(
+        "curriculum:track:blue:module:m:topic:t", "in_track", "blue", agent="curriculum"
+    )
+    d.kg.assert_fact(
+        f"{_CURRICULUM_PREFIX}x", _PREREQ_PREDICATE, f"{_CURRICULUM_PREFIX}y", agent="curriculum"
+    )
+
+    migrated = d._migrate_curriculum_prefix()
+    assert migrated == 2
+    # All edges now readable under the new prefix (legacy + pre-existing).
+    assert sorted(d._persisted_edges()) == [("a", "b"), ("b", "c"), ("x", "y")]
+    # No bare-prefix rows leak into KB search anymore; the seeded track fact survives.
+    assert _bare_curriculum_subjects(d.kg) == []
+    assert [f["subject"] for f in d.kg.export_by_subject_prefix("curriculum:track:")] == [
+        "curriculum:track:blue:module:m:topic:t"
+    ]
+
+    # Idempotent: a second run migrates nothing and leaves the graph intact.
+    assert d._migrate_curriculum_prefix() == 0
+    assert sorted(d._persisted_edges()) == [("a", "b"), ("b", "c"), ("x", "y")]
+
+
 # ── _generate_and_persist_edges (stubbed tutor) ───────────────────────────────
 
 
