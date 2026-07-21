@@ -1,0 +1,668 @@
+{
+ "track": "memory-craft",
+ "title": "Memory Craft — Chinese, Bizarre & Western Mnemonics",
+ "description": "A complete course on mnemonic technique in three strands: the classical Chinese canon (口诀 rhymed verse, 三字经 chunking, 谐音 homophone pegs, 掐指一算 hand loci, 千字文 no-repeat imagery, 说文解字 etymology decomposition, 永字八法 master exemplar, 歇后语 scene-punchline, 藏头诗 acrostic, 八卦 shape rhyme, 对仗 parallel pairing), the fantastic/bizarre-visual layer (Von Restorff, bizarreness, the six memory-multiplier properties, metaphorAnchor abstraction bridges), and the Western canon (method of loci, link/story, peg systems, Major, PAO, Dominic, number-shape/rhyme, keyword method, mind mapping, dual coding, spaced retrieval). Every topic names its catalog technique id (catalog:<id>) so the pedagogy KG can resolve the underlying evidence. Worked examples draw on the security curriculum domain (kill chain, OSI layers, HTTP status families) for consistency with the red/blue/purple tracks. Pedagogy: foundations first, then encoding families from visual to verbal to numeric to decompositional, ending in integration and spaced retrieval.",
+ "modules": [
+  {
+   "id": "foundations",
+   "title": "Foundations — Why Mnemonics Work",
+   "difficulty": "beginner",
+   "prerequisites": [],
+   "objective": "Build the mental model everything else stands on: dual coding, chunking, picture superiority, and when a mnemonic is (and isn't) the right tool.",
+   "topics": [
+    {
+     "id": "dual-coding-picture-superiority",
+     "title": "Dual Coding & the Picture Superiority Effect",
+     "concepts": [
+      "catalog:dual-coding — Paivio: verbal and imaginal systems are separate but linked; encoding in both gives two retrieval routes.",
+      "Picture superiority: pictures are recalled roughly twice as well as words; concreteness is the lever.",
+      "Referential links: the point is not the picture, it is the CUE — the image must re-encode the same proposition as the words.",
+      "Decorative imagery backfires (seductive detail): every pixel is either a memory write or noise."
+     ],
+     "key_facts": [
+      "A fact encoded verbally AND visually has two independent retrieval routes; either can reconstruct the other.",
+      "The image must encode the SAME proposition as the words — decoration measurably hurts recall.",
+      "Test every image: could the learner reconstruct the fact from image + caption alone?"
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Take the fact 'HTTP 404 = the server looked and found nothing' and encode it twice: once in words, once as a sketch. Then reconstruct the words from the sketch alone.",
+      "Given a decorated diagram of the TCP handshake, cross out every element that doesn't encode a protocol fact. What remains?"
+     ],
+     "common_mistakes": [
+      "Confusing dual coding with 'learning styles' — everyone benefits from both channels; there are no 'visual learners'.",
+      "Adding vivid but irrelevant imagery, which steals encoding from the target fact."
+     ]
+    },
+    {
+     "id": "chunking-and-working-memory",
+     "title": "Chunking & the Limits of Working Memory",
+     "concepts": [
+      "catalog:chunking — Miller's 7±2: span limits are escaped by grouping items into superordinate units.",
+      "Chunks must be meaningful or rhythmically bounded; a chunk is self-checking when it has a fixed frame.",
+      "catalog:trisyllabic-chunking — the 三字经 frame: 3-beat groups are near-optimal and audible errors surface instantly.",
+      "Rhythm and meter are external retrieval constraints: they narrow candidates so partial recall completes itself."
+     ],
+     "key_facts": [
+      "Working memory holds a handful of UNITS — chunking is how experts carry fifty facts in five slots.",
+      "Group sizes of 3–4 are optimal for serial recall; the beat makes a malformed chunk instantly audible.",
+      "'Stop, Drop, and Roll' survives decades because the 3-beat frame is self-checking, not because the words are special."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Chunk the 7 OSI layers into two rhythmically-bounded groups and recite them as triplets-plus-one; tap the beat while recalling.",
+      "Take the 7 kill-chain stages and regroup them into 3 chunks of your own design; justify the boundaries."
+     ],
+     "common_mistakes": [
+      "Letting the beat distort the fact — a corrupted item in perfect rhythm is worse than none.",
+      "Recalling chunks but losing the ORDER ACROSS chunks; chunk order needs its own cue."
+     ]
+    },
+    {
+     "id": "when-mnemonics-are-the-right-tool",
+     "title": "When Mnemonics Are the Right Tool",
+     "concepts": [
+      "Mnemonics are a SECONDARY aid for arbitrary material — anything with real logic should be reasoned, not memorized.",
+      "The five primitives every technique composes: imagination, association, senses, exaggeration, location.",
+      "Three WHY-rules: people beat objects as pegs; take the first association; use soundalikes for the unpicturable.",
+      "catalog:retrieval-practice — no encoding survives without retrieval; the chant, palace, or peg only sets up the test."
+     ],
+     "key_facts": [
+      "A worked example plus a recall attempt beats a memory trick for anything the learner can reason through.",
+      "Every mnemonic in this course is a preset built from five moves: imagination, association, senses, exaggeration, location.",
+      "Encoding without spaced retrieval decays — the classical recitation-to-criterion drill WAS the retrieval practice."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Sort ten facts from your current study into 'reason it' vs 'encode it' piles; defend each sort in one line.",
+      "For one 'encode it' fact, name which of the five primitives your planned encoding actually uses."
+     ],
+     "common_mistakes": [
+      "Reaching for a palace when the material has causal structure that should be taught as a worked example.",
+      "Building elaborate encodings and never scheduling a single retrieval attempt."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fantastic-layer",
+   "title": "The Fantastic Layer — Bizarre Visual Encoding",
+   "difficulty": "beginner–intermediate",
+   "prerequisites": ["foundations"],
+   "objective": "Master the visual-encoding engine shared by every image-based technique: Von Restorff distinctiveness, the bizarreness effect, the six memory-multiplier properties, the one-bizarre-element rule, the 千字文 no-repeat law, and metaphorAnchor abstraction bridges.",
+   "topics": [
+    {
+     "id": "von-restorff-and-bizarreness",
+     "title": "Von Restorff, Bizarreness & Emotional Salience",
+     "concepts": [
+      "Von Restorff (1933): one distinctive item in a homogeneous series is recalled 2–3× better — distinctiveness is relative, not absolute.",
+      "Bizarreness effect (McDaniel & Einstein 1986): impossible imagery earns deeper elaborative encoding, ~25–40% better recall.",
+      "catalog:bizarreness-exaggeration — exactly ONE odd element, ON the target, against a mundane scene; if everything screams, nothing is distinctive.",
+      "Emotional salience: humor and gentle absurdity beat fear/disgust for technical content — affect attaches to the concept."
+     ],
+     "key_facts": [
+      "The bizarre element must sit ON the target concept; a weird background is noise.",
+      "Exactly ONE bizarre element per scene — budget bizarreness across the whole session.",
+      "Prefer object/scale/material violations (a ticket sealed in a jar of cold blue flame); anatomical impossibilities render and recall as mush."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Encode 'HTTP 403 = understood but refused' as one mundane scene with exactly one scale-violation element on the refusal.",
+      "Take a peer's scene with three bizarre elements and cut it down to one; explain which one carries the fact."
+     ],
+     "common_mistakes": [
+      "Surreal blur: multiple bizarre elements per scene so none is distinctive.",
+      "Bizarre background, mundane target — the salience lands on the wrong thing."
+     ]
+    },
+    {
+     "id": "six-memory-multipliers",
+     "title": "The Six Memory-Multiplier Properties",
+     "concepts": [
+      "Six axes: novelty, violation, motion implication, scale violation, sensory specificity, self-reference hook.",
+      "Score each image ≥4/6; below that, regenerate with one more violating axis.",
+      "Serial position: first/last loci score 4/6, MIDDLE loci score 6/6 — the middle is what vanishes (primacy/recency).",
+      "Sensory specificity binds detail to the object ('dented brass knuckle'), never to the background."
+     ],
+     "key_facts": [
+      "Every strong mnemonic image scores on at least four of six axes: novelty, violation, motion, scale, sensory, self-reference.",
+      "The middle of any sequence is where recall dies — spend your highest absurdity budget there.",
+      "The best vivid detail RE-ENCODES the fact ('its second hand ticking in ever-widening sweeps' = the interval growing)."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Score three of your own study images against the six axes; regenerate the weakest with two more axes.",
+      "For a 7-step kill-chain encoding, assign multiplier budgets per position (4/6 endpoints, 6/6 middle) and justify."
+     ],
+     "common_mistakes": [
+      "Uniform vividness — every image equally absurd, so the middle steps still vanish.",
+      "Free-floating style words ('warm orange tones') instead of object-bound sensory detail."
+     ]
+    },
+    {
+     "id": "no-repeat-imagery-law",
+     "title": "The 千字文 No-Repeat Imagery Law",
+     "concepts": [
+      "catalog:no-repeat-imagery-rule — within one image set, every anchor image must be unique: no shared shape, color family, creature, or action.",
+      "千字文 (Thousand Character Classic, ~6th c.): a primer composed of exactly 1,000 non-repeating characters — uniqueness as a compositional law.",
+      "Cue overload / fan effect (Anderson 1974): duplicate images make one cue point at two targets; retrieval slows and degrades for both.",
+      "Callbacks are the only reuse allowed — and they must MUTATE the quoted image, never clone it."
+     ],
+     "key_facts": [
+      "Distinctiveness collapses the moment oddities repeat: two giants, two fires, two melting objects merge into one smeared trace.",
+      "Before placing a new image, diff it against everything already placed on shape, color, and action.",
+      "The 千字文 enforced this law 1,400 years before the fan effect was measured."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Audit a palace for HTTP methods: PUT already has 'a giant stamping hand' — design POST, GET, DELETE images that share no shape, color, or action with it or each other.",
+      "Take a peer's 6-image set, find the two near-duplicates, and mutate one on scale, material, species, or era."
+     ],
+     "common_mistakes": [
+      "Near-duplicates slipping in (two 'breaking' actions) and cross-firing at recall.",
+      "Over-correction: mutating so far that the element→fact mapping is lost."
+     ]
+    },
+    {
+     "id": "metaphoranchor-abstraction-bridge",
+     "title": "MetaphorAnchor — Bridging the Abstract",
+     "concepts": [
+      "Abstract concepts cannot be encoded bizarrely directly; build a two-stage bridge: concrete metaphor first, bizarre visualization second.",
+      "The metaphorAnchor is the PRE-REVEAL HINT: it must point without giving the answer — it is not the mapping.",
+      "The caption is the MAPPING (element → fact), shown after recall; if the mapping can't be stated in one line, the image won't cue.",
+      "Keep symbols stable across a session: once 'regularization = tightening strap', never switch it."
+     ],
+     "key_facts": [
+      "Two-stage bridge: ABSTRACT → concrete metaphor (metaphorAnchor) → bizarre visualization of the metaphor.",
+      "The hint (metaphorAnchor) and the answer (caption) are different artifacts — mixing them ruins both.",
+      "A stable symbol vocabulary compounds: each reused stand-in makes the next encoding cheaper."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Bridge 'exponential backoff' end to end: concrete metaphor → one bizarre scene → one-line caption mapping.",
+      "Write metaphorAnchors for three abstract security terms (nonce, salt, token) that point without answering."
+     ],
+     "common_mistakes": [
+      "A 'metaphor' that is just the definition restated — it gives the answer and kills the recall attempt.",
+      "Switching the stand-in for a concept mid-course, fragmenting every trace built on it."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "spatial-systems",
+   "title": "Spatial Systems — Palaces & the Body",
+   "difficulty": "intermediate",
+   "prerequisites": ["foundations", "fantastic-layer"],
+   "objective": "Encode ordered multi-step material onto spatial scaffolds: the method of loci, the 掐指一算 12-joint hand map, and nested palaces for hierarchies.",
+   "topics": [
+    {
+     "id": "method-of-loci",
+     "title": "Method of Loci — the Memory Palace",
+     "concepts": [
+      "catalog:method-of-loci — associate items with ordered locations along a familiar route; recall by mentally walking it.",
+      "The locus stays mundane and its phrase is reused VERBATIM; only the placed item carries bizarreness.",
+      "One fact per locus; never park two concepts at one locus, never move a concept between loci.",
+      "Serial position: densest loci first/last, most vivid in the middle; use ≥1 mutated callback to knit middle loci in."
+     ],
+     "key_facts": [
+      "Spatial/navigational memory is a pre-built ordered scaffold — the palace gives recall its order for free.",
+      "8–15 loci across 3–5 rooms is the sweet spot for one procedure; a palace is only worth it for ordered multi-step wholes.",
+      "Loci training in novices doubled word recall in six weeks (Dresler 2017) — this is the most evidence-backed technique in the course."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Build a 7-room palace for the 7 kill-chain stages, one grotesque image per room, then walk it blind twice.",
+      "Convert your commute into a 10-locus route; place the OSI layers on the first 7 loci and recall them in reverse."
+     ],
+     "common_mistakes": [
+      "Vague loci ('somewhere in the kitchen') — the phrase must be fixed and reused verbatim.",
+      "Reusing a live palace for a new list without letting it decay — lists cross-contaminate."
+     ]
+    },
+    {
+     "id": "hand-loci",
+     "title": "掐指一算 — the 12-Joint Hand Map",
+     "concepts": [
+      "catalog:hand-loci — the finger joints are a portable, always-available, over-learned spatial order: a body palace needing zero setup.",
+      "The canonical map: thumb tip walks the three joints (base → middle → tip) of index, middle, ring, little finger — 12 loci, one fixed traversal direction.",
+      "掐指一算 ('pinching the fingers to reckon'): the classical calendrical method, proof the scaffold works at civilizational scale.",
+      "Pinching each joint while encoding adds a motor/proprioceptive trace to the spatial one."
+     ],
+     "key_facts": [
+      "The hand map holds ordered sets of ≤12 items; beyond that, use a route palace.",
+      "Traversal-direction drift is the main failure — fix the direction ONCE and never reverse it.",
+      "Joints are less visually distinct than rooms, so the placed images must work harder (higher multiplier budget)."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Pinch-encode the 7 OSI layers onto the first 7 joints in stack order; recall by walking the thumb, then backwards from joint 7.",
+      "Encode a 12-item security checklist (e.g. the OWASP Top 10 + 2) across the full hand map and recite it with eyes closed."
+     ],
+     "common_mistakes": [
+      "Joint confusion — adjacent joints are similar; images migrate unless each is sharply unique (no-repeat law applies).",
+      "Reversing the walk mid-recall and corrupting the order."
+     ]
+    },
+    {
+     "id": "nested-palaces-and-personas",
+     "title": "Nested Palaces, Personas & Standalone Hooks",
+     "concepts": [
+      "Nested palace: for hierarchies (ATT&CK tactic → technique → sub-technique), open a room to reveal a sub-palace.",
+      "Persona encoding: a NAMED thing becomes a vivid character doing its signature action — people beat objects as pegs.",
+      "catalog:peg-system and catalog:link-story-method — chain items by interaction when no fixed route exists; each link is a two-item palace.",
+      "A standalone arbitrary fact needs one bizarre association, not a palace — match the structure to the material."
+     ],
+     "key_facts": [
+      "Hierarchies encode as palaces-within-palaces: room = category, sub-route = members.",
+      "A vivid character (the 'Brad Pitt factor') out-recalls an object for named entities.",
+      "The link method's weakness is cascade failure — one broken link loses the tail; palaces don't have this failure mode."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Map the 14 ATT&CK tactics to personas (Initial Access = Cleopatra talking her way through the gate); narrate the walk-through.",
+      "Take the STRIDE threat model and encode it twice: once as a link chain, once as 6 rooms; compare recall after 24 hours."
+     ],
+     "common_mistakes": [
+      "Building a nested palace when the 'hierarchy' is really a flat list — structure should mirror the material, not impress.",
+      "Link chains longer than ~7 items with no positional backup."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "verbal-rhythmic-systems",
+   "title": "Verbal & Rhythmic Systems — the Classical Chinese Verse Canon",
+   "difficulty": "intermediate",
+   "prerequisites": ["foundations"],
+   "objective": "Encode verbatim-ordered material into rhythm, rhyme, and parallel structure: 口诀 formula verse, 三字经 triplet chunking, 藏头诗 acrostics, 八卦 shape rhymes, 对仗 antithetical pairing, and the Western link/story method.",
+   "topics": [
+    {
+     "id": "rhymed-formula-verse",
+     "title": "口诀 — Rhymed Formula Verse",
+     "concepts": [
+      "catalog:rhymed-formula-verse — compress an ordered fact set into a rhymed, metered chant; the cadence forces items back out in order.",
+      "九九歌 (nine-nines chant, ~2,200 years old): a 9×9 table recited to fixed cadence becomes a motor routine, not a lookup.",
+      "Meter first, then rhyme; fact over rhyme — never distort content to fit the beat.",
+      "The documented failure: the chant decouples from the facts — always close with the line→fact mapping."
+     ],
+     "key_facts": [
+      "Rhyme and rhythm are external retrieval constraints: each line's end-sound narrows candidates so partial recall completes itself.",
+      "If it doesn't chant aloud, it won't stick — verse is an oral technology.",
+      "Cap verses at ~30 items; beyond that, chunk into multiple verses or switch to a palace."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Compose a 4-line rhymed verse for the HTTP status families (1xx hold on, 2xx success, 3xx redirect, 4xx client fault, 5xx server fault) with a MAPPING and RECALL line.",
+      "Take a peer's verse and break its meter deliberately; feel how recall collapses — then repair it."
+     ],
+     "common_mistakes": [
+      "Verse fluent, meaning lost: reciting the chant without decoding the facts.",
+      "Padding lines with abstract filler ('system', 'process', 'various') to fit the meter."
+     ]
+    },
+    {
+     "id": "acrostic-and-shape-rhyme",
+     "title": "藏头诗 Acrostics & 八卦 Shape Rhymes",
+     "concepts": [
+      "catalog:acrostic-verse — 藏头诗: line-initial characters spell the hidden key; the verse is the carrier, the initials the payload. Predates Western acrostics (ROYGBIV) by ~a millennium.",
+      "catalog:shape-rhyme — 八卦 trigram rhymes (乾三连、坤六断…): the verse verbally redraws the figure; reciting reconstructs the picture.",
+      "Shape rhyme is dual coding in one artifact: phonological loop replays the description, the mind's eye redraws it.",
+      "Acrostic cues discriminate only if initials differ; shared initials kill the cue."
+     ],
+     "key_facts": [
+      "Acrostic = double scaffold: narrative order holds the lines, each initial cues one item.",
+      "Shape rhyme works only when the figure is simple enough to verbalize losslessly — otherwise use a real diagram.",
+      "Both sub-modes drill both directions: verse → list/sketch and list/sketch → verse."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Build an acrostic for the OSI layers ('People Do Need To See Packets Arrive' or your own) and drill initials → layers until fluent.",
+      "Write a shape rhyme for the four HTTP status-family figures (1 single pillar, 2 gate pair, 4 broken gate, 5 collapsed gate) and redraw the set from the verse alone."
+     ],
+     "common_mistakes": [
+      "Forcing a wrong initial for smoother verse — the payload corrupts silently.",
+      "Shape verses too vague to constrain the drawing ('four is a square-ish thing')."
+     ]
+    },
+    {
+     "id": "antithetical-pairing",
+     "title": "对仗 — Antithetical Parallel Pairing",
+     "concepts": [
+      "catalog:antithetical-parallel-pairing — drill contrasts in strict parallel form: matched length, matched structure, antithetical content (对仗; 笠翁对韵: 天对地，雨对风).",
+      "The parallel slot is the retrieval cue: recalling one member reinstates the slot its partner must fill (encoding specificity).",
+      "Best for opposites, complements, and binary trade-offs; unpairable material forced into antithesis creates false symmetries.",
+      "Drill both directions — A→B and B→A — or the pair is only half-learned."
+     ],
+     "key_facts": [
+      "Structure, not imagery, is the second code here: the grammar does the mnemonic work.",
+      "Relational structure as retrieval cue: antithesis supplies the direction, parallelism supplies the slot.",
+      "Centuries of primer use (笠翁对韵) prove the pattern scales to a whole curriculum of pairs."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Pair five security antitheses in strict parallel form (confidentiality/availability, authentication/authorization, encryption/hashing...) and drill them call-and-response.",
+      "Take a peer's pair list and find the false symmetry — the pair whose members aren't truly antithetical."
+     ],
+     "common_mistakes": [
+      "False symmetry: the parallel form implies a contrast that doesn't exist in the material.",
+      "Drilling one direction only, so the reverse lookup fails."
+     ]
+    },
+    {
+     "id": "western-link-and-rhyme",
+     "title": "Western Verbal Systems — Link/Story & Number Rhymes",
+     "concepts": [
+      "catalog:link-story-method — chain items by absurd interaction: each item acts ON the next; recall replays the story.",
+      "catalog:number-rhyme — the Western cousin of 口诀 for digits: one=bun, two=shoe; a fixed peg list with rhyme as the constraint.",
+      "East–West convergence: 三字经 triplets and 'Stop, Drop, Roll' are the same 3-beat discovery on two continents.",
+      "Cascade failure is the link method's tax: guard long chains by chunking them into scenes of ≤7."
+     ],
+     "key_facts": [
+      "The story method and 口诀 verse are the same bet: narrative/rhythmic order substitutes for positional order.",
+      "Number-rhyme pegs are pre-memorized once, then reused for any ordered list — the peg is permanent, the images are disposable.",
+      "Interaction beats co-location in every verbal system too: 'a bear strangling a router' retrievable, 'a bear next to a router' not."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Link-chain the 7 kill-chain stages into one absurd story (each stage acts on the next); retell it 24 hours later.",
+      "Memorize the 1–10 number-rhyme pegs, then hang this week's grocery list on them in under two minutes."
+     ],
+     "common_mistakes": [
+      "Links without interaction — items merely adjacent in the story, so the chain breaks.",
+      "Reinventing pegs per list instead of learning the fixed rhyme set once."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "symbolic-number-systems",
+   "title": "Symbolic & Number Systems",
+   "difficulty": "intermediate–advanced",
+   "prerequisites": ["foundations", "fantastic-layer"],
+   "objective": "Encode arbitrary digits and symbols: 谐音 homophone pegs, the Major System, number-shape/rhyme, and the person-action systems (PAO, Dominic).",
+   "topics": [
+    {
+     "id": "homophone-pegs",
+     "title": "谐音 — Number Homophone Pegs",
+     "concepts": [
+      "catalog:number-homophone-pegs — read digits aloud and map them to soundalike words: 520 → 'I love you', 168 → 'road to prosperity', 88 → 'bye-bye'.",
+      "A free peg system: the homophones are already in long-term memory, so the peg list costs nothing to acquire.",
+      "Language- and dialect-specific — a mapping that sings in Mandarin is noise in English; use the learner's strongest language.",
+      "Homophone drift is the failure mode: a fuzzy pronunciation maps back to the wrong digit."
+     ],
+     "key_facts": [
+      "Phonological recoding turns a meaningless digit string into a semantic chunk with existing hooks.",
+      "Cantonese license-plate premiums for 8 show the mapping is automatic for a whole population — that's the peg system working at scale.",
+      "Drill both directions: number → phrase AND phrase → number."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Encode three port numbers (22, 443, 3389) as homophone phrases in your strongest language, imaged bizarrely; recall the digits from the scenes tomorrow.",
+      "Build a personal 0–9 homophone table and use it to memorize a phone number and a CVE id."
+     ],
+     "common_mistakes": [
+      "Loose pronunciation that silently swaps a digit on recall.",
+      "One-off mappings per number instead of a stable digit→sound table."
+     ]
+    },
+    {
+     "id": "major-and-shape-systems",
+     "title": "Major System, Number-Shape & Number-Rhyme",
+     "concepts": [
+      "catalog:major-system — digits map to consonant sounds (0=s/z, 1=t/d, 2=n, 3=m...); vowels are free, so digits become words become images.",
+      "catalog:number-shape — digits mapped by visual resemblance (2=swan, 4=sail); the shape-rhyme instinct applied to numerals.",
+      "catalog:number-rhyme — digits mapped by rhyme (one=bun); the 口诀 instinct applied to numerals.",
+      "Pick ONE digit alphabet and standardize: mixing systems mid-course fragments every trace."
+     ],
+     "key_facts": [
+      "The Major System is the 谐音 move made phoneme-exact — consonants fixed, vowels free, so any digit string has a word.",
+      "Number-shape is fastest to learn, Major is most general; rhyme sits between.",
+      "All three converge on the same endpoint: digits → concrete image → bizarre scene → peg."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Learn the Major consonant table, then encode 443 and 8080 as words and image them interacting at a door.",
+      "Encode the same 4-digit PIN via number-shape and via Major; note which recall is faster after one hour and after one day."
+     ],
+     "common_mistakes": [
+      "Encoding consonants loosely so the word decodes to wrong digits.",
+      "Learning two digit systems at once and cross-firing them."
+     ]
+    },
+    {
+     "id": "pao-and-dominic",
+     "title": "PAO & Dominic — Person-Action-Object at Scale",
+     "concepts": [
+      "catalog:pao-system — digit pairs map to a Person, an Action, and an Object; six digits = one scene (person of pair 1 does action of pair 2 on object of pair 3).",
+      "catalog:dominic-system — digit pairs map to initials → people with signature actions; O'Connor's competition system.",
+      "People beat objects as pegs (the WHY-rule from foundations) — these systems industrialize that finding.",
+      "The 100-image table is the entry fee: fluency with the pegs comes before any long number."
+     ],
+     "key_facts": [
+      "PAO compresses 6 digits into ONE interacting scene — the highest digit-density system in the course.",
+      "The interaction is the glue: person-acts-on-object is retrievable; three co-located props are not.",
+      "Memory-sport evidence (Maguire 2003): these are trained skills, not talents — the brain reorganization follows the practice."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Build a 00–09 PAO starter table (10 people with signature actions and objects), then encode the IPv4 octets of your gateway as one scene.",
+      "Encode a 6-digit date (e.g. 070415) as a PAO scene and place it at the first joint of your hand map; recall it in 48 hours."
+     ],
+     "common_mistakes": [
+      "Attempting long numbers before the peg table is fluent — decode time kills the trace.",
+      "Scenes where person, action, and object don't interact."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "decomposition-systems",
+   "title": "Decomposition Systems — Terms, Scenes & Exemplars",
+   "difficulty": "intermediate",
+   "prerequisites": ["foundations", "fantastic-layer"],
+   "objective": "Encode opaque terms and whole skill categories by taking them apart: 说文解字 etymology decomposition, the keyword method, 歇后语 scene→punchline encoding, and the 永字八法 master exemplar.",
+   "topics": [
+    {
+     "id": "etymology-and-keyword",
+     "title": "说文解字 & the Keyword Method",
+     "concepts": [
+      "catalog:etymology-decomposition — 说文解字 (~100 CE): decompose a term into concrete historical components (roots, radicals), then compose them into one bizarre story image.",
+      "catalog:keyword-method — the acoustic cousin: pick a familiar soundalike, image it interacting with the meaning (term → keyword → image → meaning).",
+      "Verified splits only: folk etymology encodes a false fact; when the split is dishonest, use a soundalike instead.",
+      "Keep component stand-ins stable — one root, one image, reused across every term that shares the root."
+     ],
+     "key_facts": [
+      "The decomposition makes the LABEL a retrieval cue for the meaning — the term explains itself.",
+      "Keyword gains are large (Raugh & Atkinson: ~88% vs ~28%) but decay fast without spaced retrieval.",
+      "The recall path has three links — term→components, components→scene, scene→meaning — and each must be drilled."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Decompose 'cryptography' (kryptós + gráphein) into the cloaked-scribe image and walk the full recall path both directions.",
+      "Pick three opaque terms from your current study; decompose two honestly and soundalike the third — justify the choice."
+     ],
+     "common_mistakes": [
+      "Invented etymology: a plausible-but-false split that encodes misinformation.",
+      "Decomposition without composition: parts listed, no scene, nothing sticks."
+     ]
+    },
+    {
+     "id": "xiehouyu-scene-punchline",
+     "title": "歇后语 — Two-Part Scene→Punchline Encoding",
+     "concepts": [
+      "catalog:two-part-allegorical-encoding — a vivid concrete mini-scene, then the punchline meaning: 'a mud bodhisattva crosses the river — it can't even save itself' (泥菩萨过河 — 自身难保).",
+      "The scene must ENACT the meaning (dissolving mud = helplessness), not merely co-occur with it.",
+      "This is the folk metaphorAnchor: scene first as the pre-reveal hint, punchline as the post-recall mapping.",
+      "Drill the pair scene-first: hear the scene, produce the meaning; then reverse."
+     ],
+     "key_facts": [
+      "The two-part form packages hint and answer in one saying — the scene points, the punchline lands.",
+      "A decorative scene that doesn't enact the meaning cues nothing, however vivid.",
+      "歇后语 are a living inventory: thousands of pre-built scene→meaning pairs in the language already."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Compose a 歇后语-style pair for 'defense in depth' — one concrete scene whose physics enact layering, then the punchline.",
+      "Take three abstract security principles and write scene→punchline pairs; swap with a peer and test whether the scene alone cues the meaning."
+     ],
+     "common_mistakes": [
+      "Scene recalled, punchline forgotten — the halves were never drilled as a pair.",
+      "Scenes that illustrate the TOPIC (a castle for security) instead of enacting the PRINCIPLE."
+     ]
+    },
+    {
+     "id": "master-exemplar",
+     "title": "永字八法 — the Master Exemplar",
+     "concepts": [
+      "catalog:master-exemplar — teach a whole skill category through ONE exemplar that contains every case; variants are learned as deltas.",
+      "永字八法: the character 永 contains all eight fundamental brush strokes — one character carries the calligraphy curriculum.",
+      "Worked-example effect (Sweller): for novices, one well-structured exemplar beats problem-solving from scratch.",
+      "The exemplar must genuinely contain every case — a partial exemplar teaches a partial category with false confidence."
+     ],
+     "key_facts": [
+      "One integrated trace beats N disconnected ones: each variant encodes as a diff against the exemplar.",
+      "Schema abstraction (Gick & Holyoak): mapping variants to a known source case is how transfer actually happens.",
+      "Fluency on the exemplar does not guarantee transfer — variants still need interleaved practice."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Choose the '永' of the HTTP request: one canonical request/response pair containing every header class you'll teach; drill it, then derive three variants as explicit diffs.",
+      "Find the master exemplar for one skill category in your domain (the canonical nmap scan, the canonical Sigma rule) and enumerate the cases it covers — and any it misses."
+     ],
+     "common_mistakes": [
+      "Exemplar gaps: a case the exemplar lacks is never learned, with false confidence.",
+      "Exemplar worship: reproducing the canonical case but unable to diff variants against it."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "integration-and-retrieval",
+   "title": "Integration — Choosing the Encoding & Keeping It",
+   "difficulty": "advanced",
+   "prerequisites": ["foundations", "fantastic-layer", "spatial-systems", "verbal-rhythmic-systems", "symbolic-number-systems", "decomposition-systems"],
+   "objective": "Select the right encoding for the shape of the material, compose techniques without interference, and lock everything in with spaced retrieval.",
+   "topics": [
+    {
+     "id": "choosing-by-shape",
+     "title": "Choosing the Encoding by the Shape of the Fact",
+     "concepts": [
+      "A NUMBER → homophone pegs / Major / PAO scene. An ORDERED SEQUENCE → palace, hand map, link chain, or 口诀 verse.",
+      "A NAMED THING → persona doing its signature action. An ABSTRACT CONCEPT → metaphorAnchor bridge or soundalike.",
+      "A VERBATIM LIST → 三字经 triplets, 藏头诗 acrostic, or rhymed verse. A CONTRAST PAIR → 对仗 parallel form. A FIGURE → 八卦 shape rhyme. A SKILL CATEGORY → 永字八法 master exemplar.",
+      "When no named recipe fits, COMPOSE from the five primitives rather than forcing a mismatch."
+     ],
+     "key_facts": [
+      "The selection table is the course in one line: match the technique to the SHAPE of the material, not to your favorite technique.",
+      "One anchor per lesson — don't overload; three techniques on one fact interfere.",
+      "Every technique in this course is a preset of the same five moves; the taxonomy is a convenience, not a wall."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Given ten mixed facts (a port number, the kill chain, an ATT&CK technique name, a crypto definition, an HTTP status table, an OSI diagram, a synonym pair...), assign each an encoding family and defend the assignment.",
+      "Take one fact you previously encoded badly, diagnose the shape mismatch, and re-encode it with the right family."
+     ],
+     "common_mistakes": [
+      "Technique loyalty: forcing every fact through the one system you know best.",
+      "Stacking encodings (palace + verse + pegs on the same list) so cues interfere."
+     ]
+    },
+    {
+     "id": "spaced-retrieval-for-mnemonics",
+     "title": "Spaced Retrieval — Making Encodings Permanent",
+     "concepts": [
+      "catalog:retrieval-practice — effortful recall modifies the trace itself; reciting from cues beats re-reading the verse or re-walking the palace with eyes open.",
+      "catalog:spaced-practice — distribute reviews; the expanding schedule is the highest-leverage scheduling decision.",
+      "catalog:successive-relearning — recall-to-criterion, drop, re-test later: the classical recitation drill formalized.",
+      "catalog:metacognition-calibration — the fluency illusion: a palace that 'feels known' and isn't; only test outcomes are ground truth."
+     ],
+     "key_facts": [
+      "The classical recitation-to-criterion culture WAS successive relearning — encoding and retrieval were never separate in the tradition.",
+      "Keyword-style gains decay fastest without relearning (Wang, Thomas & Ouellette 1992) — schedule the reviews when you build the image.",
+      "The testing effect (Roediger & Karpicke: g ≈ 0.5–0.6 across meta-analyses) is the largest replicated effect in learning science."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Schedule a 4-session spaced plan for one palace built this course (1h, 1d, 3d, 7d) and execute the first two blind.",
+      "Take a verse you 'know' and test it from first-beat cues only; log every dropped line and re-encode those harder."
+     ],
+     "common_mistakes": [
+      "Re-reading / re-walking instead of recalling — recognition fluency masquerading as memory.",
+      "Building new encodings while unreviewed old ones silently decay."
+     ]
+    },
+    {
+     "id": "capstone-personal-system",
+     "title": "Capstone — Assemble Your Personal Memory System",
+     "concepts": [
+      "A working system = one palace route + one hand map + one digit alphabet + one verse habit + a spaced review loop.",
+      "catalog:mind-mapping — the pre-encoding step: map the material's structure BEFORE choosing anchors, so the mnemonic mirrors the logic.",
+      "The no-repeat law applies across your whole practice: keep a standing inventory of your recurring symbols and stand-ins.",
+      "Maintenance beats construction: ten minutes of blind recall per day keeps every palace in the course alive."
+     ],
+     "key_facts": [
+      "Fluency is a system property: the pegs, routes, and review loop reinforce each other; isolated tricks decay.",
+      "Your stable stand-in vocabulary (built in decomposition-systems) is the compounding asset — guard it.",
+      "The end state: given any arbitrary material, you name its shape, pick the encoding, and schedule the first review — in under a minute."
+     ],
+     "attack_techniques": [],
+     "killchain_stage": "N/A",
+     "defense_pairing": {"what_blue_sees": "N/A", "logs": [], "detections": [], "controls": []},
+     "drills": [
+      "Capstone: take a full topic from the red-team track (e.g. the 14 ATT&CK tactics with 3 techniques each), choose and execute a complete encoding plan (structure map → palaces/personas → pegs → review schedule), and demonstrate blind recall of the whole set.",
+      "Write your personal one-page cheat sheet: your palace routes, your digit table, your stand-in vocabulary, your review cadence."
+     ],
+     "common_mistakes": [
+      "Collecting techniques without a maintenance loop — a museum of decayed palaces.",
+      "Skipping the structure map and memorizing material whose logic should have been taught instead."
+     ]
+    }
+   ]
+  }
+ ]
+}
